@@ -8,7 +8,7 @@
 constexpr uint8_t DISPLAY_PIN = 6;
 constexpr uint16_t DISPLAY_PIXEL_COUNT = 28;
 constexpr uint8_t DISPLAY_BRIGHTNESS = 80;
-constexpr unsigned long PATTERN_DURATION_MS = 1500;
+constexpr unsigned long TIME_CHANGE_INTERVAL_MS = 2000;
 
 // Create the NeoPixel strip and pass it into the time display library.
 Adafruit_NeoPixel displayPixels(
@@ -17,46 +17,35 @@ Adafruit_NeoPixel displayPixels(
     NEO_GRB + NEO_KHZ800
 );
 
-TimeDisplayLibrary timeDisplay(displayPixels);
+TimeDisplayLibrary neoClock(displayPixels);
 
-// Tracks which pattern is currently being shown.
-uint8_t currentPattern = 0;
-unsigned long lastPatternChangeMs = 0;
+// Example times shown in HHMM format.
+const uint16_t EXAMPLE_TIMES[] = {1900, 1942, 510, 0, 2359};
+constexpr size_t EXAMPLE_TIME_COUNT = sizeof(EXAMPLE_TIMES) / sizeof(EXAMPLE_TIMES[0]);
+
+size_t currentTimeIndex = 0;
+unsigned long lastTimeChangeMs = 0;
 
 // -----------------------------------------------------------------------------
-// Display helpers
+// Display helper
 // -----------------------------------------------------------------------------
-void showCurrentPattern() {
-    switch (currentPattern) {
-        case 0:
-            Serial.println(F("Displaying: Twenty Five"));
-            timeDisplay.displayTwentyFive();
-            break;
+void showCurrentTime() {
+    const uint16_t hhmm = EXAMPLE_TIMES[currentTimeIndex];
 
-        case 1:
-            Serial.println(F("Displaying: Five Ten"));
-            timeDisplay.displayFiveTen();
-            break;
+    Serial.print(F("Displaying HHMM value: "));
+    if (hhmm < 1000) {
+        Serial.print('0');
+    }
+    if (hhmm < 100) {
+        Serial.print('0');
+    }
+    if (hhmm < 10) {
+        Serial.print('0');
+    }
+    Serial.println(hhmm);
 
-        case 2:
-            Serial.println(F("Displaying: Zero"));
-            timeDisplay.displayZero();
-            break;
-
-        case 3:
-            Serial.println(F("Displaying: Nine Four Two"));
-            timeDisplay.displayNineFourTwo();
-            break;
-
-        case 4:
-            Serial.println(F("Displaying: One Eight Four Two"));
-            timeDisplay.displayOneEightFourTwo();
-            break;
-
-        default:
-            currentPattern = 0;
-            timeDisplay.displayTwentyFive();
-            break;
+    if (!neoClock.showTime(hhmm)) {
+        Serial.println(F("ERROR: Invalid time or incorrect pixel count."));
     }
 }
 
@@ -68,37 +57,43 @@ void setup() {
     delay(250);
 
     Serial.println();
-    Serial.println(F("TimeDisplayLibrary pattern cycle starting..."));
+    Serial.println(F("TimeDisplayLibrary direct time example starting..."));
 
     displayPixels.begin();
     displayPixels.setBrightness(DISPLAY_BRIGHTNESS);
     displayPixels.clear();
     displayPixels.show();
 
-    if (!timeDisplay.hasValidPixelCount()) {
+    if (!neoClock.hasValidPixelCount()) {
         Serial.println(F("ERROR: The display requires at least 28 NeoPixels."));
         return;
     }
 
-    // Showduino-style blue can be changed at runtime without altering masks.
-    timeDisplay.setColor(0, 120, 255);
-    showCurrentPattern();
-    lastPatternChangeMs = millis();
+    // Change this to true if the physical digits appear in reverse order.
+    neoClock.setReverseDigitOrder(false);
+
+    // Set the display colour once. Every rendered time uses this colour.
+    neoClock.setColor(0, 120, 255);
+
+    // This is the simple call requested for a 19:00 display.
+    neoClock.showTime(1900);
+
+    lastTimeChangeMs = millis();
 }
 
 // -----------------------------------------------------------------------------
 // Arduino main loop
 // -----------------------------------------------------------------------------
 void loop() {
-    if (!timeDisplay.hasValidPixelCount()) {
+    if (!neoClock.hasValidPixelCount()) {
         delay(1000);
         return;
     }
 
     const unsigned long nowMs = millis();
-    if (nowMs - lastPatternChangeMs >= PATTERN_DURATION_MS) {
-        lastPatternChangeMs = nowMs;
-        currentPattern = (currentPattern + 1) % 5;
-        showCurrentPattern();
+    if (nowMs - lastTimeChangeMs >= TIME_CHANGE_INTERVAL_MS) {
+        lastTimeChangeMs = nowMs;
+        currentTimeIndex = (currentTimeIndex + 1) % EXAMPLE_TIME_COUNT;
+        showCurrentTime();
     }
 }
