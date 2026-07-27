@@ -5,23 +5,31 @@
 #include <Adafruit_NeoPixel.h>
 
 /**
- * @brief Controls a 28-pixel, four-digit NeoPixel seven-segment display.
+ * @brief Reusable controller for a 28-pixel, four-digit NeoPixel clock.
  *
- * Each digit uses seven pixels. New code can display any value from 0000 to
- * 9999, including clock-style HHMM values such as 1900.
+ * Each digit uses seven pixels. The default physical segment order is
+ * A, B, C, D, E, F, G for each consecutive group of seven pixels.
  */
-class TimeDisplayLibrary {
+class NeoClock {
 public:
     static constexpr uint8_t DIGIT_COUNT = 4;
     static constexpr uint8_t SEGMENTS_PER_DIGIT = 7;
     static constexpr uint16_t REQUIRED_PIXEL_COUNT = DIGIT_COUNT * SEGMENTS_PER_DIGIT;
 
-    explicit TimeDisplayLibrary(Adafruit_NeoPixel &display);
+    NeoClock();
+    explicit NeoClock(Adafruit_NeoPixel &display);
 
-    // Set the colour used by all rendered digits and legacy patterns.
+    // Attach and initialise the NeoPixel strip. This enables the simple pattern:
+    // NeoClock neoClock; neoClock.begin(pixels); neoClock.showTime(1900);
+    bool begin(Adafruit_NeoPixel &display, bool initialisePixels = true);
+    bool isReady() const;
+
     void setColor(uint8_t red, uint8_t green, uint8_t blue);
     void setColor(uint32_t packedColor);
     uint32_t getColor() const;
+
+    void setBrightness(uint8_t brightness);
+    uint8_t getBrightness() const;
 
     // Display any four-digit value. Leading zeroes are shown by default.
     bool showNumber(uint16_t value, bool leadingZeroes = true);
@@ -34,25 +42,20 @@ public:
     // Display four explicit digits from left to right.
     bool showDigits(uint8_t digit1, uint8_t digit2, uint8_t digit3, uint8_t digit4);
 
-    // Reverse the physical digit order when the NeoPixel chain is wired from
-    // right to left. Segment order inside each digit remains A, B, C, D, E, F, G.
     void setReverseDigitOrder(bool reversed);
     bool getReverseDigitOrder() const;
 
-    // Turn every display pixel off and immediately update the strip.
     void clear();
-
-    // Returns true when the attached strip contains at least 28 pixels.
     bool hasValidPixelCount() const;
 
-    // Original named patterns retained exactly for older Showduino sketches.
+    // Original named patterns retained for older sketches.
     void displayTwentyFive();
     void displayFiveTen();
     void displayZero();
     void displayNineFourTwo();
     void displayOneEightFourTwo();
 
-    // Backward-compatible aliases retained for existing sketches.
+    // Original method names retained as aliases.
     void twentyfive();
     void five_ten();
     void zero();
@@ -64,9 +67,19 @@ private:
     void renderDigit(uint8_t logicalPosition, uint8_t digit);
     void renderPattern(const uint8_t *pixelIndexes, size_t pixelCount);
 
-    Adafruit_NeoPixel &_display;
+    Adafruit_NeoPixel *_display;
     uint32_t _color;
+    uint8_t _brightness;
     bool _reverseDigitOrder;
+};
+
+/**
+ * @brief Backward-compatible class name for existing projects.
+ */
+class TimeDisplayLibrary : public NeoClock {
+public:
+    TimeDisplayLibrary() : NeoClock() {}
+    explicit TimeDisplayLibrary(Adafruit_NeoPixel &display) : NeoClock(display) {}
 };
 
 #endif // TIME_DISPLAY_LIBRARY_H
