@@ -18,24 +18,19 @@ constexpr uint8_t DIGIT_SEGMENTS[10] = {
     0b01101111  // 9: A B C D F G
 };
 
-// Original 28-pixel masks preserved exactly from the first library version.
 constexpr uint8_t PATTERN_TWENTY_FIVE[] = {
     1, 2, 4, 5, 6, 7, 8, 10, 11, 13, 14, 15, 16, 17, 18, 19, 21, 22, 24, 25, 27
 };
-
 constexpr uint8_t PATTERN_FIVE_TEN[] = {
     0, 1, 2, 3, 4, 5, 7, 12, 14, 15, 16, 17, 18, 19, 22, 23, 25, 26, 27
 };
-
 constexpr uint8_t PATTERN_ZERO[] = {
     0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19,
     21, 22, 23, 24, 25, 26
 };
-
 constexpr uint8_t PATTERN_NINE_FOUR_TWO[] = {
     0, 1, 3, 4, 6, 7, 9, 12, 13, 14, 15, 16, 18, 19, 20, 21, 26
 };
-
 constexpr uint8_t PATTERN_ONE_EIGHT_FOUR_TWO[] = {
     0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
     19, 20, 21, 26
@@ -48,25 +43,69 @@ constexpr size_t patternSize(const uint8_t (&)[N]) {
 
 } // namespace
 
-TimeDisplayLibrary::TimeDisplayLibrary(Adafruit_NeoPixel &display)
-    : _display(display),
-      _color(display.Color(255, 0, 0)),
+NeoClock::NeoClock()
+    : _display(nullptr),
+      _color(0),
+      _brightness(80),
       _reverseDigitOrder(false) {
 }
 
-void TimeDisplayLibrary::setColor(uint8_t red, uint8_t green, uint8_t blue) {
-    _color = _display.Color(red, green, blue);
+NeoClock::NeoClock(Adafruit_NeoPixel &display)
+    : NeoClock() {
+    _display = &display;
+    _color = display.Color(255, 0, 0);
 }
 
-void TimeDisplayLibrary::setColor(uint32_t packedColor) {
+bool NeoClock::begin(Adafruit_NeoPixel &display, bool initialisePixels) {
+    _display = &display;
+    _color = display.Color(255, 0, 0);
+
+    if (!hasValidPixelCount()) {
+        return false;
+    }
+
+    if (initialisePixels) {
+        _display->begin();
+    }
+
+    _display->setBrightness(_brightness);
+    clear();
+    return true;
+}
+
+bool NeoClock::isReady() const {
+    return hasValidPixelCount();
+}
+
+void NeoClock::setColor(uint8_t red, uint8_t green, uint8_t blue) {
+    if (_display != nullptr) {
+        _color = _display->Color(red, green, blue);
+    } else {
+        _color = Adafruit_NeoPixel::Color(red, green, blue);
+    }
+}
+
+void NeoClock::setColor(uint32_t packedColor) {
     _color = packedColor;
 }
 
-uint32_t TimeDisplayLibrary::getColor() const {
+uint32_t NeoClock::getColor() const {
     return _color;
 }
 
-bool TimeDisplayLibrary::showNumber(uint16_t value, bool leadingZeroes) {
+void NeoClock::setBrightness(uint8_t brightness) {
+    _brightness = brightness;
+    if (_display != nullptr) {
+        _display->setBrightness(brightness);
+        _display->show();
+    }
+}
+
+uint8_t NeoClock::getBrightness() const {
+    return _brightness;
+}
+
+bool NeoClock::showNumber(uint16_t value, bool leadingZeroes) {
     if (!hasValidPixelCount() || value > 9999) {
         return false;
     }
@@ -82,17 +121,18 @@ bool TimeDisplayLibrary::showNumber(uint16_t value, bool leadingZeroes) {
     return true;
 }
 
-bool TimeDisplayLibrary::showTime(uint16_t hhmm) {
+bool NeoClock::showTime(uint16_t hhmm) {
     if (hhmm > 2359) {
         return false;
     }
 
-    const uint8_t hours = static_cast<uint8_t>(hhmm / 100);
-    const uint8_t minutes = static_cast<uint8_t>(hhmm % 100);
-    return showTime(hours, minutes);
+    return showTime(
+        static_cast<uint8_t>(hhmm / 100),
+        static_cast<uint8_t>(hhmm % 100)
+    );
 }
 
-bool TimeDisplayLibrary::showTime(uint8_t hours, uint8_t minutes) {
+bool NeoClock::showTime(uint8_t hours, uint8_t minutes) {
     if (hours > 23 || minutes > 59 || !hasValidPixelCount()) {
         return false;
     }
@@ -108,12 +148,7 @@ bool TimeDisplayLibrary::showTime(uint8_t hours, uint8_t minutes) {
     return true;
 }
 
-bool TimeDisplayLibrary::showDigits(
-    uint8_t digit1,
-    uint8_t digit2,
-    uint8_t digit3,
-    uint8_t digit4
-) {
+bool NeoClock::showDigits(uint8_t digit1, uint8_t digit2, uint8_t digit3, uint8_t digit4) {
     if (!hasValidPixelCount() || digit1 > 9 || digit2 > 9 || digit3 > 9 || digit4 > 9) {
         return false;
     }
@@ -123,25 +158,29 @@ bool TimeDisplayLibrary::showDigits(
     return true;
 }
 
-void TimeDisplayLibrary::setReverseDigitOrder(bool reversed) {
+void NeoClock::setReverseDigitOrder(bool reversed) {
     _reverseDigitOrder = reversed;
 }
 
-bool TimeDisplayLibrary::getReverseDigitOrder() const {
+bool NeoClock::getReverseDigitOrder() const {
     return _reverseDigitOrder;
 }
 
-void TimeDisplayLibrary::clear() {
-    _display.clear();
-    _display.show();
+void NeoClock::clear() {
+    if (_display == nullptr) {
+        return;
+    }
+
+    _display->clear();
+    _display->show();
 }
 
-bool TimeDisplayLibrary::hasValidPixelCount() const {
-    return _display.numPixels() >= REQUIRED_PIXEL_COUNT;
+bool NeoClock::hasValidPixelCount() const {
+    return _display != nullptr && _display->numPixels() >= REQUIRED_PIXEL_COUNT;
 }
 
-void TimeDisplayLibrary::renderDigits(const uint8_t digits[DIGIT_COUNT], bool leadingZeroes) {
-    _display.clear();
+void NeoClock::renderDigits(const uint8_t digits[DIGIT_COUNT], bool leadingZeroes) {
+    _display->clear();
 
     bool nonZeroDigitSeen = leadingZeroes;
     for (uint8_t position = 0; position < DIGIT_COUNT; ++position) {
@@ -156,10 +195,10 @@ void TimeDisplayLibrary::renderDigits(const uint8_t digits[DIGIT_COUNT], bool le
         renderDigit(position, digit);
     }
 
-    _display.show();
+    _display->show();
 }
 
-void TimeDisplayLibrary::renderDigit(uint8_t logicalPosition, uint8_t digit) {
+void NeoClock::renderDigit(uint8_t logicalPosition, uint8_t digit) {
     if (digit == BLANK_DIGIT || digit > 9) {
         return;
     }
@@ -173,61 +212,37 @@ void TimeDisplayLibrary::renderDigit(uint8_t logicalPosition, uint8_t digit) {
 
     for (uint8_t segment = 0; segment < SEGMENTS_PER_DIGIT; ++segment) {
         if (segmentMask & (1U << segment)) {
-            _display.setPixelColor(firstPixel + segment, _color);
+            _display->setPixelColor(firstPixel + segment, _color);
         }
     }
 }
 
-void TimeDisplayLibrary::renderPattern(const uint8_t *pixelIndexes, size_t pixelCount) {
-    _display.clear();
+void NeoClock::renderPattern(const uint8_t *pixelIndexes, size_t pixelCount) {
+    if (!hasValidPixelCount()) {
+        return;
+    }
 
-    const uint16_t availablePixels = _display.numPixels();
+    _display->clear();
+    const uint16_t availablePixels = _display->numPixels();
+
     for (size_t index = 0; index < pixelCount; ++index) {
         const uint8_t pixel = pixelIndexes[index];
         if (pixel < availablePixels) {
-            _display.setPixelColor(pixel, _color);
+            _display->setPixelColor(pixel, _color);
         }
     }
 
-    _display.show();
+    _display->show();
 }
 
-void TimeDisplayLibrary::displayTwentyFive() {
-    renderPattern(PATTERN_TWENTY_FIVE, patternSize(PATTERN_TWENTY_FIVE));
-}
+void NeoClock::displayTwentyFive() { renderPattern(PATTERN_TWENTY_FIVE, patternSize(PATTERN_TWENTY_FIVE)); }
+void NeoClock::displayFiveTen() { renderPattern(PATTERN_FIVE_TEN, patternSize(PATTERN_FIVE_TEN)); }
+void NeoClock::displayZero() { renderPattern(PATTERN_ZERO, patternSize(PATTERN_ZERO)); }
+void NeoClock::displayNineFourTwo() { renderPattern(PATTERN_NINE_FOUR_TWO, patternSize(PATTERN_NINE_FOUR_TWO)); }
+void NeoClock::displayOneEightFourTwo() { renderPattern(PATTERN_ONE_EIGHT_FOUR_TWO, patternSize(PATTERN_ONE_EIGHT_FOUR_TWO)); }
 
-void TimeDisplayLibrary::displayFiveTen() {
-    renderPattern(PATTERN_FIVE_TEN, patternSize(PATTERN_FIVE_TEN));
-}
-
-void TimeDisplayLibrary::displayZero() {
-    renderPattern(PATTERN_ZERO, patternSize(PATTERN_ZERO));
-}
-
-void TimeDisplayLibrary::displayNineFourTwo() {
-    renderPattern(PATTERN_NINE_FOUR_TWO, patternSize(PATTERN_NINE_FOUR_TWO));
-}
-
-void TimeDisplayLibrary::displayOneEightFourTwo() {
-    renderPattern(PATTERN_ONE_EIGHT_FOUR_TWO, patternSize(PATTERN_ONE_EIGHT_FOUR_TWO));
-}
-
-void TimeDisplayLibrary::twentyfive() {
-    displayTwentyFive();
-}
-
-void TimeDisplayLibrary::five_ten() {
-    displayFiveTen();
-}
-
-void TimeDisplayLibrary::zero() {
-    displayZero();
-}
-
-void TimeDisplayLibrary::ninefourtwo() {
-    displayNineFourTwo();
-}
-
-void TimeDisplayLibrary::oneeightfourtwo() {
-    displayOneEightFourTwo();
-}
+void NeoClock::twentyfive() { displayTwentyFive(); }
+void NeoClock::five_ten() { displayFiveTen(); }
+void NeoClock::zero() { displayZero(); }
+void NeoClock::ninefourtwo() { displayNineFourTwo(); }
+void NeoClock::oneeightfourtwo() { displayOneEightFourTwo(); }
