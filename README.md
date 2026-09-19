@@ -2,7 +2,7 @@
 
 Arduino library for a four-digit, 28-NeoPixel seven-segment display.
 
-Version 2 turns the original fixed-pattern library into a general number display. Any integer from **0 to 9999** can be rendered without manually defining the LED pattern.
+Version 2 turns the original fixed-pattern library into a general number display and adds non-blocking display effects. Any integer from **0 to 9999** can be rendered without manually defining an LED pattern.
 
 ## Dependencies
 
@@ -12,6 +12,7 @@ Version 2 turns the original fixed-pattern library into a general number display
 ## Basic example
 
 ```cpp
+#include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
 #include <TimeDisplayLibrary.h>
 
@@ -23,23 +24,22 @@ TimeDisplayLibrary display(pixels);
 
 void setup() {
     Serial.begin(115200);
-
     pixels.begin();
     pixels.clear();
     pixels.show();
 
     display.setBrightness(80);
     display.setColor(255, 0, 0);
-
-    // Displays 1842.
     display.showNumber(1842);
 }
 
 void loop() {
+    // Required while a non-blocking effect is running.
+    display.update();
 }
 ```
 
-## Display any number
+## Numbers
 
 ```cpp
 display.showNumber(0);
@@ -47,45 +47,94 @@ display.showNumber(25);
 display.showNumber(510);
 display.showNumber(1842);
 display.showNumber(9999);
-```
-
-By default unused digits are blank. To force leading zeros:
-
-```cpp
 display.showNumber(25, true); // 0025
 ```
 
-## Colours
+## Colours and brightness
 
 ```cpp
-display.setColor(255, 0, 0);   // red
+display.setColor(255, 0, 0);
+display.setBrightness(100);
 display.showNumber(1234);
-
-display.setColor(0, 255, 0);   // green
-display.showNumber(5678);
-
-display.setColor(0, 0, 255);   // blue
-display.showNumber(42);
 ```
 
-## Individual digits
+## Electric buzz
 
-Positions run from 0 (left-most) to 3 (right-most).
+Keeps the current number readable while rapidly arcing between electric blue, icy blue-white and hard white, with occasional brief dropouts.
 
 ```cpp
-display.showDigit(0, 9);
-display.showDigit(1, 4);
-display.showDigit(2, 2);
-display.showDigit(3, 1);
+display.showNumber(1842);
+display.startElectricBuzz(2000);
+
+void loop() {
+    display.update();
+}
+```
+
+## Shuffle to a result
+
+Randomises all four digits, slows down, then locks the digits from left to right onto the requested number.
+
+```cpp
+display.shuffleTo(1842, 2500);
+
+void loop() {
+    display.update();
+}
+```
+
+## Shuffle to a random result
+
+```cpp
+display.shuffleRandom(2500);
+
+void loop() {
+    display.update();
+
+    if (!display.isEffectRunning()) {
+        uint16_t result = display.getEffectResult();
+    }
+}
+```
+
+For genuinely unpredictable results on ESP32, seed Arduino's random generator from an appropriate entropy source in your sketch before starting the shuffle.
+
+## Flicker
+
+```cpp
+display.showNumber(1985);
+display.startFlicker(1500);
+```
+
+## Flash
+
+```cpp
+display.startFlash(255, 255, 255, 3, 80);
+```
+
+All effects are non-blocking. Keep calling `display.update()` from `loop()`; the rest of your program remains free to handle buttons, sensors, networking and other jobs.
+
+You can cancel an effect at any time:
+
+```cpp
+display.stopEffect();
 ```
 
 ## API
 
-- `showNumber(number, leadingZeros)` - display 0-9999.
-- `showDigit(position, digit)` - display a single digit.
-- `setColor(r, g, b)` - set the display colour.
-- `setColor(color)` - set a packed NeoPixel colour.
-- `setBrightness(brightness)` - set brightness from 0-255.
-- `clear()` - turn all pixels off.
+- `showNumber(number, leadingZeros)`
+- `showDigit(position, digit)`
+- `setColor(r, g, b)`
+- `setBrightness(brightness)`
+- `clear()`
+- `startElectricBuzz(durationMs)`
+- `shuffleTo(finalNumber, durationMs, leadingZeros)`
+- `shuffleRandom(durationMs, leadingZeros)`
+- `startFlicker(durationMs)`
+- `startFlash(r, g, b, flashes, intervalMs)`
+- `update()`
+- `isEffectRunning()`
+- `stopEffect()`
+- `getEffectResult()`
 
 The original v1.x named functions are retained for source compatibility.
