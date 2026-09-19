@@ -1,140 +1,105 @@
 # TimeDisplayLibrary
 
-Arduino library for a four-digit, 28-NeoPixel seven-segment display.
+A four-digit / 28-NeoPixel seven-segment Arduino display library with a built-in non-blocking FX engine.
 
-Version 2 turns the original fixed-pattern library into a general number display and adds non-blocking display effects. Any integer from **0 to 9999** can be rendered without manually defining an LED pattern.
+## Core display
 
-## Dependencies
+```cpp
+display.setColor(TimeDisplayLibrary::PURPLE);
+display.setBrightness(100);
+display.showNumber(1842);
+```
 
-- Arduino
-- Adafruit NeoPixel
+Numbers 0-9999 are supported. Pass `true` for leading zeros:
 
-## Basic example
+```cpp
+display.showNumber(25, true); // 0025
+```
+
+## Named colours
+
+`RED`, `GREEN`, `BLUE`, `WHITE`, `PURPLE`, `CYAN`, `ORANGE`, `YELLOW`, `PINK`, `ELECTRIC_BLUE`.
+
+Custom RGB remains supported:
+
+```cpp
+display.setColor(120, 10, 255);
+```
+
+Each digit can have its own colour:
+
+```cpp
+display.setDigitColor(0, TimeDisplayLibrary::RED);
+display.setDigitColor(1, TimeDisplayLibrary::ORANGE);
+display.setDigitColor(2, TimeDisplayLibrary::YELLOW);
+display.setDigitColor(3, TimeDisplayLibrary::GREEN);
+display.showNumber(1842);
+```
+
+## FX
+
+Every effect is non-blocking. Always call:
+
+```cpp
+void loop() {
+  display.update();
+}
+```
+
+Available effects include:
+
+- Electric buzz: `startElectricBuzz()`
+- Shuffle / random shuffle: `shuffleTo()`, `shuffleRandom()`
+- Slot machine: `startSlotMachine()`
+- Odometer / counter: `startOdometer()`, `startCountTo()`
+- Flicker / shimmer / brownout: `startFlicker()`, `startShimmer()`, `startBrownout()`
+- Glitch: `startGlitch()`
+- Flash / strobe: `startFlash()`, `startStrobe()`
+- Breathe / pulse: `startBreathe()`, `startPulse()`
+- Fade: `startFadeIn()`, `startFadeOut()`
+- Rainbow / colour cycle: `startRainbow()`, `startColorCycle()`
+- Segment chase: `startSegmentChase()`
+- Power up / power down: `startPowerUp()`, `startPowerDown()`
+- Left/right reveal: `startRevealLeft()`, `startRevealRight()`
+
+Electrical effects support intensity where appropriate:
+
+```cpp
+display.startElectricBuzz(2500, TimeDisplayLibrary::WILD);
+display.startGlitch(1500, TimeDisplayLibrary::SUBTLE);
+```
+
+## Complete example
 
 ```cpp
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
 #include <TimeDisplayLibrary.h>
 
-#define DISPLAY_PIN 6
+#define DISPLAY_PIN 5
 #define DISPLAY_PIXELS 28
 
 Adafruit_NeoPixel pixels(DISPLAY_PIXELS, DISPLAY_PIN, NEO_GRB + NEO_KHZ800);
 TimeDisplayLibrary display(pixels);
 
 void setup() {
-    Serial.begin(115200);
-    pixels.begin();
-    pixels.clear();
-    pixels.show();
+  pixels.begin();
+  pixels.clear();
+  pixels.show();
 
-    display.setBrightness(80);
-    display.setColor(255, 0, 0);
-    display.showNumber(1842);
+  randomSeed(esp_random());
+
+  display.setBrightness(100);
+  display.setColor(TimeDisplayLibrary::ELECTRIC_BLUE);
+  display.showNumber(1842);
+  display.startElectricBuzz(2000, TimeDisplayLibrary::WILD);
 }
 
 void loop() {
-    // Required while a non-blocking effect is running.
-    display.update();
+  display.update();
 }
 ```
 
-## Numbers
+Use `isEffectRunning()`, `stopEffect()` and `getEffectResult()` to integrate effects into larger projects.
 
-```cpp
-display.showNumber(0);
-display.showNumber(25);
-display.showNumber(510);
-display.showNumber(1842);
-display.showNumber(9999);
-display.showNumber(25, true); // 0025
-```
-
-## Colours and brightness
-
-```cpp
-display.setColor(255, 0, 0);
-display.setBrightness(100);
-display.showNumber(1234);
-```
-
-## Electric buzz
-
-Keeps the current number readable while rapidly arcing between electric blue, icy blue-white and hard white, with occasional brief dropouts.
-
-```cpp
-display.showNumber(1842);
-display.startElectricBuzz(2000);
-
-void loop() {
-    display.update();
-}
-```
-
-## Shuffle to a result
-
-Randomises all four digits, slows down, then locks the digits from left to right onto the requested number.
-
-```cpp
-display.shuffleTo(1842, 2500);
-
-void loop() {
-    display.update();
-}
-```
-
-## Shuffle to a random result
-
-```cpp
-display.shuffleRandom(2500);
-
-void loop() {
-    display.update();
-
-    if (!display.isEffectRunning()) {
-        uint16_t result = display.getEffectResult();
-    }
-}
-```
-
-For genuinely unpredictable results on ESP32, seed Arduino's random generator from an appropriate entropy source in your sketch before starting the shuffle.
-
-## Flicker
-
-```cpp
-display.showNumber(1985);
-display.startFlicker(1500);
-```
-
-## Flash
-
-```cpp
-display.startFlash(255, 255, 255, 3, 80);
-```
-
-All effects are non-blocking. Keep calling `display.update()` from `loop()`; the rest of your program remains free to handle buttons, sensors, networking and other jobs.
-
-You can cancel an effect at any time:
-
-```cpp
-display.stopEffect();
-```
-
-## API
-
-- `showNumber(number, leadingZeros)`
-- `showDigit(position, digit)`
-- `setColor(r, g, b)`
-- `setBrightness(brightness)`
-- `clear()`
-- `startElectricBuzz(durationMs)`
-- `shuffleTo(finalNumber, durationMs, leadingZeros)`
-- `shuffleRandom(durationMs, leadingZeros)`
-- `startFlicker(durationMs)`
-- `startFlash(r, g, b, flashes, intervalMs)`
-- `update()`
-- `isEffectRunning()`
-- `stopEffect()`
-- `getEffectResult()`
-
-The original v1.x named functions are retained for source compatibility.
+The original v1 named methods remain available for source compatibility.
