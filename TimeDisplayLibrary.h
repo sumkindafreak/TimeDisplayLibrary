@@ -17,8 +17,13 @@ public:
     void setColor(uint8_t red, uint8_t green, uint8_t blue);
     void setColor(uint32_t color);
     void setColor(NamedColor color);
+    // Hex colours use the familiar 0xRRGGBB format, e.g. 0x9900FF.
+    void setColorHex(uint32_t hexColor);
+    void randomColor();
     void setDigitColor(uint8_t position, uint8_t red, uint8_t green, uint8_t blue);
     void setDigitColor(uint8_t position, NamedColor color);
+    void setDigitColorHex(uint8_t position, uint32_t hexColor);
+    void randomDigitColors();
     void clearDigitColors();
     void setBrightness(uint8_t brightness);
     void clear();
@@ -96,6 +101,8 @@ private:
     bool _flashOn;
 
     uint32_t namedColor(NamedColor color) const;
+    uint32_t hexToColor(uint32_t hexColor) const;
+    uint32_t randomPaletteColor() const;
     uint32_t wheel(uint8_t pos) const;
     void drawDigit(uint8_t position, uint8_t digit);
     void drawDigitWithColor(uint8_t position, uint8_t digit, uint32_t color);
