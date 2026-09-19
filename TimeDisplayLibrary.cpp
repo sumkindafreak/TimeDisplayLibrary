@@ -24,6 +24,22 @@ uint32_t TimeDisplayLibrary::namedColor(NamedColor c) const {
     case ELECTRIC_BLUE:return _time_display.Color(30,120,255); default:return _time_display.Color(255,0,0);
   }
 }
+uint32_t TimeDisplayLibrary::hexToColor(uint32_t hexColor) const {
+  // Accept 0xRRGGBB and convert it through Adafruit_NeoPixel::Color so the
+  // library remains correct regardless of the strip's configured byte order.
+  uint8_t r=(hexColor>>16)&0xFF;
+  uint8_t g=(hexColor>>8)&0xFF;
+  uint8_t b=hexColor&0xFF;
+  return _time_display.Color(r,g,b);
+}
+uint32_t TimeDisplayLibrary::randomPaletteColor() const {
+  // The RGB chart that inspired this feature uses the six-level web-safe
+  // palette: 00, 33, 66, 99, CC and FF.
+  static const uint8_t levels[6]={0x00,0x33,0x66,0x99,0xCC,0xFF};
+  uint8_t r=levels[random(0,6)],g=levels[random(0,6)],b=levels[random(0,6)];
+  if(r==0&&g==0&&b==0) r=0x33; // Never choose invisible black.
+  return _time_display.Color(r,g,b);
+}
 uint32_t TimeDisplayLibrary::wheel(uint8_t p) const {
   p=255-p; if(p<85)return _time_display.Color(255-p*3,0,p*3);
   if(p<170){p-=85;return _time_display.Color(0,p*3,255-p*3);}
@@ -32,8 +48,12 @@ uint32_t TimeDisplayLibrary::wheel(uint8_t p) const {
 void TimeDisplayLibrary::setColor(uint8_t r,uint8_t g,uint8_t b){_color=_time_display.Color(r,g,b);}
 void TimeDisplayLibrary::setColor(uint32_t c){_color=c;}
 void TimeDisplayLibrary::setColor(NamedColor c){_color=namedColor(c);}
+void TimeDisplayLibrary::setColorHex(uint32_t h){_color=hexToColor(h&0xFFFFFFUL);}
+void TimeDisplayLibrary::randomColor(){_color=randomPaletteColor();}
 void TimeDisplayLibrary::setDigitColor(uint8_t p,uint8_t r,uint8_t g,uint8_t b){if(p<4){_digitColors[p]=_time_display.Color(r,g,b);_digitColorEnabled[p]=true;}}
 void TimeDisplayLibrary::setDigitColor(uint8_t p,NamedColor c){if(p<4){_digitColors[p]=namedColor(c);_digitColorEnabled[p]=true;}}
+void TimeDisplayLibrary::setDigitColorHex(uint8_t p,uint32_t h){if(p<4){_digitColors[p]=hexToColor(h&0xFFFFFFUL);_digitColorEnabled[p]=true;}}
+void TimeDisplayLibrary::randomDigitColors(){for(uint8_t p=0;p<4;p++){_digitColors[p]=randomPaletteColor();_digitColorEnabled[p]=true;}}
 void TimeDisplayLibrary::clearDigitColors(){for(uint8_t i=0;i<4;i++)_digitColorEnabled[i]=false;}
 void TimeDisplayLibrary::setBrightness(uint8_t b){_brightness=b;_time_display.setBrightness(b);_time_display.show();}
 
