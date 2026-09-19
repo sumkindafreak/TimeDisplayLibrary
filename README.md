@@ -26,6 +26,43 @@ Custom RGB remains supported:
 display.setColor(120, 10, 255);
 ```
 
+### Hex colours
+
+Colours can be copied directly from an RGB/hex colour chart using standard `0xRRGGBB` notation:
+
+```cpp
+display.setColorHex(0x9900FF); // purple
+display.showNumber(1842);
+
+display.setColorHex(0x00FFFF); // cyan
+display.setColorHex(0xFF9900); // orange
+display.setColorHex(0x33FF00); // bright green
+display.setColorHex(0x0033FF); // blue
+display.setColorHex(0xFFFFFF); // white
+```
+
+Per-digit hex colours are also supported:
+
+```cpp
+display.setDigitColorHex(0, 0xFF0000);
+display.setDigitColorHex(1, 0xFF9900);
+display.setDigitColorHex(2, 0xFFFF00);
+display.setDigitColorHex(3, 0x00FF00);
+display.showNumber(1842);
+```
+
+### Random palette colours
+
+```cpp
+display.randomColor();
+display.showNumber(1842);
+
+display.randomDigitColors();
+display.showNumber(1842);
+```
+
+The random palette uses the same six RGB levels found on common colour charts: `00`, `33`, `66`, `99`, `CC` and `FF`. Pure black is skipped so a randomly selected display colour never disappears completely.
+
 Each digit can have its own colour:
 
 ```cpp
